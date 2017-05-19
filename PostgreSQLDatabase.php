@@ -59,6 +59,12 @@ abstract class PostgreSQLDatabase {
 	 * @var array "name" => count
 	 */
 	private $executedSTMTs;
+	
+	/**
+	 * Time Spent in SQL queries
+	 * @var float
+	 */
+	private $timeSpent;
 
 	/**
 	 * Current instance
@@ -77,6 +83,7 @@ abstract class PostgreSQLDatabase {
 		$this->connection_data = array();
 		$this->executedSTMTs = array();
 		$this->executionCount = 0;
+		$this->timeSpent = 0;
 	}
 
 	/**
@@ -164,9 +171,11 @@ abstract class PostgreSQLDatabase {
 	 */
 	final protected function ExecuteQuery($query) {
 		if ($this->IsConnected()) {
+			$start = microtime(true);
 			$result = @pg_query($this->resource, $query);
 			$resultarray = pg_fetch_all($result);
 			pg_free_result($result);
+			$this->timeSpent += (microtime(true) - $start);
 			return $resultarray;
 		} else {
 			return false;
@@ -331,6 +340,7 @@ abstract class PostgreSQLDatabase {
 				$this->executedSTMTs["$name"]["executionTimeMin"] = min($this->executedSTMTs["$name"]["executionTimeMin"], $execTime);
 				$this->executedSTMTs["$name"]["executionTimeMax"] = max($this->executedSTMTs["$name"]["executionTimeMax"], $execTime);
 			}
+			$this->timeSpent += $execTime;
 			return $result;
 		} else {
 			trigger_error("STMT named '" . $name . "' has not been loaded before or has generated errors.", E_USER_ERROR);
@@ -511,6 +521,14 @@ abstract class PostgreSQLDatabase {
 	 */
 	public function GetExecutedSTMTStatistics() {
 		return $this->executedSTMTs;
+	}
+	
+	/**
+	 * Gets all time spent in SQL queries
+	 * @return float
+	 */
+	public function GetTimeSpent() {
+		return $this->timeSpent;
 	}
 }
 
